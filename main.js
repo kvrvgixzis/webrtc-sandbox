@@ -1,12 +1,11 @@
-const videoNodes = document.querySelectorAll('.video');
-
-let ms = null;
-let ms1 = null;
-let ms2 = null;
-let noise = null;
+const videoNodes = document.querySelectorAll(".video");
+const setNoiseBtns = document.querySelectorAll(".set-noise");
+const setMsBtns = document.querySelectorAll(".set-ms");
 
 const pc1 = new RTCPeerConnection();
 const pc2 = new RTCPeerConnection();
+
+let msclones = null;
 
 pc1.ontrack = (e) => {
   videoNodes[0].srcObject = e.streams[0];
@@ -42,7 +41,17 @@ pc2.onicecandidate = (e) => {
   if (e.candidate) pc1.addIceCandidate(e.candidate);
 };
 
-const removeTracks = (pc) => pc.getSenders().forEach((s) => pc.removeTrack(s));
+const removeTracks = (pc) => {
+  pc.getSenders().forEach((s) => pc.removeTrack(s));
+};
+
+const addTracks = (pc, stream) => {
+  stream.getTracks().forEach((t) => pc.addTrack(t, stream));
+};
+
+const replaceTracks = (pc, stream) => {
+  pc.getSenders().forEach((s, i) => s.replaceTrack(stream.getTracks()[i]));
+};
 
 const whiteNoise = () => {
   const canvas = document.createElement("canvas");
@@ -51,52 +60,49 @@ const whiteNoise = () => {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   const p = ctx.getImageData(0, 0, canvas.width, canvas.height);
   requestAnimationFrame(() => draw(p, ctx));
-  
+
   return canvas.captureStream();
-}
+};
 
 const draw = (p, ctx) => {
-  for (var i = 0; i < p.data.length; i++) {
+  for (var i = 0; i < p.data.length; i++)
     p.data[i++] = p.data[i++] = p.data[i++] = Math.random() * 255;
-  }
+
   ctx.putImageData(p, 0, 0);
   requestAnimationFrame(() => draw(p, ctx));
-}
+};
+
+setNoiseBtns[0].addEventListener("click", () =>
+  replaceTracks(pc1, whiteNoise())
+);
+setNoiseBtns[1].addEventListener("click", () =>
+  replaceTracks(pc2, whiteNoise())
+);
+
+setMsBtns[0].addEventListener("click", () => replaceTracks(pc1, msclones[0]));
+setMsBtns[1].addEventListener("click", () => replaceTracks(pc2, msclones[1]));
 
 const main = async () => {
-  ms = await navigator.mediaDevices.getUserMedia({ video: true });
-  noise = await whiteNoise();
-  console.log(noise, noise.getTracks().length);
+  const ms = await navigator.mediaDevices.getUserMedia({ video: true });
+  msclones = [ms.clone(), ms.clone()];
 
-  ms1 = ms.clone();
-  ms2 = ms.clone();
+  videoNodes[2].srcObject = msclones[0];
+  videoNodes[3].srcObject = msclones[1];
 
-  videoNodes[2].srcObject = ms1;
-  videoNodes[3].srcObject = ms2;
-
-  // add tracks
-  ms1.getTracks().forEach((t) => pc1.addTrack(t, ms1));
+  addTracks(pc1, msclones[0]);
   const offer = await pc1.createOffer();
-  console.log(offer)
   await pc1.setLocalDescription(offer);
-  // emit offer
-
-  // on video offer
-  console.log(pc1.localDescription)
+  // >>> emit offer
+  // [signaling]
+  // <<< handle offer
   await pc2.setRemoteDescription(pc1.localDescription);
-  ms2.getTracks().forEach((t) => pc2.addTrack(t, ms2));
+  addTracks(pc2, msclones[1]);
   const answer = await pc2.createAnswer();
   await pc2.setLocalDescription(answer);
-  // emit video answer
-
-  // on video answer
+  // >>> emit answer
+  // [signaling]
+  // <<< handle answer
   await pc1.setRemoteDescription(pc2.localDescription);
-
-  setTimeout(() => {
-    pc1.getSenders().forEach((s, i) => {
-      s.replaceTrack(noise.getTracks()[i]);
-    });
-  }, 2000);
 };
 
 main();

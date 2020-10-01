@@ -1,6 +1,7 @@
 .video {
-  width: 100px;
-  height: 100px;
+  width: 25vw;
+  height: 25vw;
+  background: #000;
 }
 .column {
   display: flex;
