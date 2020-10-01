@@ -1,11 +1,21 @@
 const videoNodes = document.querySelectorAll(".video");
 const setNoiseBtns = document.querySelectorAll(".set-noise");
 const setMsBtns = document.querySelectorAll(".set-ms");
+const getMsBtns = document.querySelectorAll(".get-ms");
+const logNode = document.querySelector('.console');
 
 const pc1 = new RTCPeerConnection();
 const pc2 = new RTCPeerConnection();
 
+const isSafari = !!navigator.userAgent.match(/Version\/[\d\.]+.*Safari/);
+const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
 let msclones = null;
+
+const log = (...str) => logNode.innerHTML += `<div> >>> ${str.join(' ')}</div>`;
+
+log(`isSafari: ${isSafari}`);
+log(`iOS: ${iOS}`);
 
 pc1.ontrack = (e) => {
   videoNodes[0].srcObject = e.streams[0];
@@ -16,29 +26,29 @@ pc2.ontrack = (e) => {
 };
 
 pc1.onnegotiationneeded = async () => {
-  console.log("1 onnegotiationneeded");
+  log("1 onnegotiationneeded");
 };
 
 pc2.onnegotiationneeded = async () => {
-  console.log("2 onnegotiationneeded");
+  log("2 onnegotiationneeded");
 };
 
 pc1.onsignalingstatechange = () => {
-  console.log("1", pc1.signalingState);
+  log("1", pc1.signalingState);
 };
 
 pc2.onsignalingstatechange = () => {
-  console.log("2", pc2.signalingState);
+  log("2", pc2.signalingState);
 };
 
 pc1.onicecandidate = (e) => {
-  console.log("1 onicecandidate");
-  if (e.candidate) pc2.addIceCandidate(e.candidate);
+  log("1 onicecandidate");
+  e.candidate && pc2.addIceCandidate(e.candidate);
 };
 
 pc2.onicecandidate = (e) => {
-  console.log("2 onicecandidate");
-  if (e.candidate) pc1.addIceCandidate(e.candidate);
+  log("2 onicecandidate");
+  e.candidate && pc1.addIceCandidate(e.candidate);
 };
 
 const removeTracks = (pc) => {
@@ -81,6 +91,16 @@ setNoiseBtns[1].addEventListener("click", () =>
 
 setMsBtns[0].addEventListener("click", () => replaceTracks(pc1, msclones[0]));
 setMsBtns[1].addEventListener("click", () => replaceTracks(pc2, msclones[1]));
+
+getMsBtns[0].addEventListener("click", async () => {
+  msclones[0] = await navigator.mediaDevices.getUserMedia({ video: true });
+  // crash on ios safari
+});
+
+getMsBtns[1].addEventListener("click", async () => {
+  msclones[1] = await navigator.mediaDevices.getUserMedia({ video: true });
+  // crash on ios safari
+});
 
 const main = async () => {
   const ms = await navigator.mediaDevices.getUserMedia({ video: true });

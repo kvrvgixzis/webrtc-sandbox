@@ -10,3 +10,9 @@
 .row {
   display: flex;
 }
+.console {
+    margin: 10px;
+    padding: 10px;
+    background-color: #000;
+    color: #fff;
+}
